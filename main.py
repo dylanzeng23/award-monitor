@@ -10,7 +10,7 @@ from pathlib import Path
 import yaml
 
 import db
-from models import AwardResult, Config, RunLog
+from models import AwardResult, Config, RunLog, SearchRoute
 from notifier import send_alerts, send_message, build_bot_app, set_search_callback, is_search_requested
 from scrapers.cathay import CathayScraper
 from scrapers.seats_aero import SeatsAeroScraper
@@ -86,26 +86,33 @@ async def run_search_cycle(config: Config, dry_run: bool = False) -> list[AwardR
     return all_new_results
 
 
-async def run_immediate_search(config: Config) -> tuple[list[AwardResult], int]:
+async def run_immediate_search(config: Config, cabin: str = "business") -> tuple[list[AwardResult], int]:
     """Run an immediate search for all Cathay routes (called from Telegram bot).
     Returns (all_results, routes_checked) — includes all availability, not just new."""
     all_results = []
     routes_checked = 0
 
-    for route in config.routes:
-        for program in route.programs:
-            if program != "cathay":
+    scraper = CathayScraper()
+    try:
+        await scraper.start()
+        for route in config.routes:
+            if "cathay" not in route.programs:
                 continue
-            scraper = CathayScraper()
-            try:
-                await scraper.start()
-                results = await scraper.search_route(route)
-                all_results.extend(results)
-                routes_checked += 1
-            except Exception as e:
-                logger.error(f"Immediate search error: {e}")
-            finally:
-                await scraper.stop()
+            # Override cabin for this search
+            search_route = SearchRoute(
+                origin=route.origin,
+                destination=route.destination,
+                cabin=cabin,
+                date_range=route.date_range,
+                programs=route.programs,
+            )
+            results = await scraper.search_route(search_route)
+            all_results.extend(results)
+            routes_checked += 1
+    except Exception as e:
+        logger.error(f"Immediate search error: {e}")
+    finally:
+        await scraper.stop()
 
     return all_results, routes_checked
 
@@ -116,8 +123,8 @@ async def scheduler_loop(config: Config):
     logger.info(f"Scheduler started. Interval: {config.interval_hours}h ({interval_seconds:.0f}s)")
 
     # Set up the search callback for "cathay europe" command
-    async def search_callback():
-        return await run_immediate_search(config)
+    async def search_callback(cabin: str = "business"):
+        return await run_immediate_search(config, cabin=cabin)
 
     set_search_callback(search_callback)
 
@@ -133,7 +140,9 @@ async def scheduler_loop(config: Config):
             config,
             "Award Monitor started.\n\n"
             "Commands:\n"
-            "  cathay europe - Search now\n"
+            "  cathay europe biz - Business class\n"
+            "  cathay europe econ - Economy\n"
+            "  cathay europe - Business (default)\n"
             "  /status - Last run\n"
             "  /routes - Show routes\n"
             "  /recent - Recent finds\n"

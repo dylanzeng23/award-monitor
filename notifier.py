@@ -36,13 +36,13 @@ def format_alert(result: AwardResult) -> str:
     return "\n".join(lines)
 
 
-def format_cathay_europe_report(results: list[AwardResult], routes_checked: int) -> str:
+def format_cathay_europe_report(results: list[AwardResult], routes_checked: int, cabin_label: str = "Business") -> str:
     """Format a full Cathay Europe search report."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    header = f"Cathay Europe Search ({now})\n{routes_checked} routes checked\n{'=' * 30}\n"
+    header = f"CX Europe {cabin_label} ({now})\n{routes_checked} routes checked\n{'=' * 30}\n"
 
     if not results:
-        return header + "\nNo business class availability found."
+        return header + f"\nNo {cabin_label.lower()} availability found."
 
     lines = [header, f"{len(results)} seat(s) found:\n"]
     for r in results:
@@ -154,15 +154,27 @@ async def cmd_recent(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle free-text messages like 'cathay europe'."""
+    """Handle free-text messages like 'cathay europe biz'."""
     text = (update.message.text or "").strip().lower()
 
-    if text in ("cathay europe", "cathay eu", "search", "搜"):
-        await update.message.reply_text("Searching all Cathay Europe routes... (takes ~5 seconds)")
+    # Parse cabin from message
+    cabin = None
+    if text in ("cathay europe", "cathay eu", "cathay europe biz", "cathay eu biz", "search", "搜"):
+        cabin = "business"
+    elif text in ("cathay europe econ", "cathay eu econ", "搜经济"):
+        cabin = "economy"
+    elif text in ("cathay europe prem", "cathay europe premium", "cathay eu prem", "搜超经"):
+        cabin = "premium"
+    elif text in ("cathay europe first", "cathay eu first"):
+        cabin = "first"
+
+    if cabin:
+        cabin_label = {"business": "Business", "economy": "Economy", "premium": "Premium Econ", "first": "First"}[cabin]
+        await update.message.reply_text(f"Searching CX Europe {cabin_label}... (~5 seconds)")
 
         if _search_callback:
-            results, routes_checked = await _search_callback()
-            report = format_cathay_europe_report(results, routes_checked)
+            results, routes_checked = await _search_callback(cabin=cabin)
+            report = format_cathay_europe_report(results, routes_checked, cabin_label)
             await update.message.reply_text(report)
         else:
             await update.message.reply_text("Search not available (monitor not running).")
@@ -170,7 +182,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text in ("help", "帮助", "/help"):
         await update.message.reply_text(
             "Commands:\n"
-            "  cathay europe - Search all CX Europe routes now\n"
+            "  cathay europe biz - Business class\n"
+            "  cathay europe econ - Economy\n"
+            "  cathay europe prem - Premium Economy\n"
+            "  cathay europe - Business (default)\n"
             "  /status - Last run info\n"
             "  /routes - Show monitored routes\n"
             "  /recent - Recent availability found"

@@ -1,0 +1,11 @@
+config.local.yaml
+venv/
+__pycache__/
+*.pyc
+*.db
+browser_data/
+debug_*.png
+*.log
+award_monitor.log
+seats_api_response.json
+aa_api_response.json

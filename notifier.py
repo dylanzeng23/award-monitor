@@ -16,22 +16,25 @@ EUROPE_CITIES = {
     "LHR": "London", "MAN": "Manchester",
 }
 
+# Asia Miles required per cabin (HKG to Europe, all same)
+MILES_REQUIRED = {"economy": 27000, "premium": 50000, "business": 88000, "first": 125000}
+
+WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
 
 def format_alert(result: AwardResult) -> str:
     """Format an award availability alert for Telegram."""
     dest_city = EUROPE_CITIES.get(result.destination, result.destination)
-    carrier = f" ({result.operating_carrier})" if result.operating_carrier else ""
+    weekday = WEEKDAYS[result.flight_date.weekday()]
+    miles = MILES_REQUIRED.get(result.cabin.lower(), 0)
+    avail = result.departure_time.replace("Avail: ", "") if result.departure_time else ""
 
     lines = [
-        f"[B] {result.origin} -> {result.destination} {dest_city}{carrier}",
-        f"Date: {result.flight_date}",
+        f"[{result.cabin[0]}] {result.origin} -> {result.destination} ({dest_city})",
+        f"{weekday} {result.flight_date} | {avail}",
     ]
-    if result.departure_time:
-        lines.append(result.departure_time)
-    if result.arrival_time:
-        lines.append(result.arrival_time)
-    if result.miles_cost:
-        lines.append(f"Miles: {result.miles_cost:,}")
+    if miles:
+        lines.append(f"{miles:,} Asia Miles")
 
     return "\n".join(lines)
 
@@ -39,7 +42,10 @@ def format_alert(result: AwardResult) -> str:
 def format_cathay_europe_report(results: list[AwardResult], routes_checked: int, cabin_label: str = "Business") -> str:
     """Format a full Cathay Europe search report."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    header = f"CX Europe {cabin_label} ({now})\n{routes_checked} routes checked\n{'=' * 30}\n"
+    cabin_key = {"premium econ": "premium", "business": "business", "economy": "economy", "first": "first"}.get(cabin_label.lower(), cabin_label.lower())
+    miles = MILES_REQUIRED.get(cabin_key, 0)
+    miles_str = f" | {miles:,} miles/seat" if miles else ""
+    header = f"CX Europe {cabin_label}{miles_str}\n{now} | {routes_checked} routes\n{'=' * 30}\n"
 
     if not results:
         return header + f"\nNo {cabin_label.lower()} availability found."
@@ -47,7 +53,9 @@ def format_cathay_europe_report(results: list[AwardResult], routes_checked: int,
     lines = [header, f"{len(results)} seat(s) found:\n"]
     for r in results:
         dest_city = EUROPE_CITIES.get(r.destination, r.destination)
-        lines.append(f"  {r.flight_date} {r.destination} ({dest_city}) - {r.departure_time}")
+        weekday = WEEKDAYS[r.flight_date.weekday()]
+        avail = r.departure_time.replace("Avail: ", "") if r.departure_time else ""
+        lines.append(f"  {weekday} {r.flight_date} {r.destination} ({dest_city}) - {avail}")
 
     return "\n".join(lines)
 

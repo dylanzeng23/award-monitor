@@ -167,13 +167,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Parse cabin from message
     cabin = None
-    if text in ("cathay europe", "cathay eu", "cathay europe biz", "cathay eu biz", "search", "搜"):
+    if text in ("cathay europe", "cathay eu", "cathay europe biz", "cathay eu biz",
+                 "cx europe", "cx eu", "cx europe biz", "cx eu biz", "search", "搜"):
         cabin = "business"
-    elif text in ("cathay europe econ", "cathay eu econ", "搜经济"):
+    elif text in ("cathay europe econ", "cathay eu econ", "cx europe econ", "cx eu econ", "搜经济"):
         cabin = "economy"
-    elif text in ("cathay europe prem", "cathay europe premium", "cathay eu prem", "搜超经"):
+    elif text in ("cathay europe prem", "cathay europe premium", "cathay eu prem",
+                   "cx europe prem", "cx eu prem", "搜超经"):
         cabin = "premium"
-    elif text in ("cathay europe first", "cathay eu first"):
+    elif text in ("cathay europe first", "cathay eu first", "cx europe first", "cx eu first"):
         cabin = "first"
 
     if cabin:
@@ -190,10 +192,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text in ("help", "帮助", "/help"):
         await update.message.reply_text(
             "Commands:\n"
-            "  cathay europe biz - Business class\n"
-            "  cathay europe econ - Economy\n"
-            "  cathay europe prem - Premium Economy\n"
-            "  cathay europe - Business (default)\n"
+            "  cx europe biz - Business class\n"
+            "  cx europe econ - Economy\n"
+            "  cx europe prem - Premium Economy\n"
             "  /status - Last run info\n"
             "  /routes - Show monitored routes\n"
             "  /recent - Recent availability found"

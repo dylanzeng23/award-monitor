@@ -26,15 +26,22 @@ def format_alert(result: AwardResult) -> str:
     """Format an award availability alert for Telegram."""
     dest_city = EUROPE_CITIES.get(result.destination, result.destination)
     weekday = WEEKDAYS[result.flight_date.weekday()]
-    miles = MILES_REQUIRED.get(result.cabin.lower(), 0)
     avail = result.departure_time.replace("Avail: ", "") if result.departure_time else ""
+
+    # Use actual miles from scraper; fall back to CX pricing only for cathay scraper
+    if result.miles_cost and result.miles_cost > 0:
+        program = result.operating_carrier or result.scraper.split(":")[-1]
+        miles_line = f"{result.miles_cost:,} {program} miles"
+    else:
+        miles = MILES_REQUIRED.get(result.cabin.lower(), 0)
+        miles_line = f"{miles:,} Asia Miles" if miles else ""
 
     lines = [
         f"[{result.cabin[0]}] {result.origin} -> {result.destination} ({dest_city})",
         f"{weekday} {result.flight_date} | {avail}",
     ]
-    if miles:
-        lines.append(f"{miles:,} Asia Miles")
+    if miles_line:
+        lines.append(miles_line)
 
     return "\n".join(lines)
 

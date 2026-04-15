@@ -17,8 +17,11 @@ API_KEY = ""  # Set from config
 # Only alert on programs user has points in
 PROGRAMS_OF_INTEREST = {"american", "delta", "alaska", "avios", "finnair", "aeromexico", "united"}
 
-# Exclude operators
+# Exclude operators (bad connections)
 EXCLUDE_OPERATORS = {"VN", "EY", "EK", "QR", "TK"}
+
+# Allow 1-stop connections on these quality airlines
+GOOD_CONNECTING_AIRLINES = {"JL", "BA", "CX", "QF", "NH", "AA", "DL", "KL", "AF", "LH", "SQ", "AY"}
 
 CABIN_MAP = {"business": "J", "economy": "Y", "premium": "W", "first": "F"}
 
@@ -97,16 +100,20 @@ class SeatsAeroProScraper:
             if source not in PROGRAMS_OF_INTEREST:
                 continue
 
-            # Prefer direct flights; for connections, check airlines aren't excluded
+            # Filter connections: allow direct, or 1-stop on quality airlines
             is_direct = entry.get(direct_key, False)
-            direct_airlines = entry.get(direct_airlines_key, "") or ""
-            if not is_direct and direct_airlines:
-                # Has airline info — check against exclude list
-                if any(op in direct_airlines.upper() for op in EXCLUDE_OPERATORS):
+            direct_airlines = (entry.get(direct_airlines_key, "") or "").upper().strip()
+            if not is_direct:
+                if direct_airlines:
+                    # Has airline info — block excluded operators, allow good ones
+                    airlines = {a.strip() for a in direct_airlines.replace(",", " ").split()}
+                    if airlines & EXCLUDE_OPERATORS:
+                        continue
+                    if not airlines & GOOD_CONNECTING_AIRLINES:
+                        continue
+                else:
+                    # No airline info — unknown connection, skip
                     continue
-            # If not direct and no airline info, it's likely VN/EK connection — skip
-            if not is_direct and not direct_airlines:
-                continue
 
             flight_date = date.fromisoformat(entry["Date"])
             seats = entry.get(seats_key, 0)
@@ -114,6 +121,8 @@ class SeatsAeroProScraper:
             dest = entry.get("Route", {}).get("DestinationAirport", route.destination)
             label = PROGRAM_LABELS.get(source, source)
             weekday = WEEKDAYS[flight_date.weekday()]
+
+            route_type = "Direct" if is_direct else f"via {direct_airlines}" if direct_airlines else "1-stop"
 
             results.append(AwardResult(
                 scraper=f"sa:{source}",
@@ -123,9 +132,9 @@ class SeatsAeroProScraper:
                 flight_number=label,
                 cabin=target.title(),
                 miles_cost=miles,
-                stops=0,
+                stops=0 if is_direct else 1,
                 operating_carrier=label,
-                departure_time=f"{weekday} | {seats} seat{'s' if seats != 1 else ''}",
+                departure_time=f"{weekday} | {seats} seat{'s' if seats != 1 else ''} | {route_type}",
                 arrival_time=f"{label} {miles:,}mi",
             ))
 

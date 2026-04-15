@@ -46,13 +46,10 @@ def format_alert(result: AwardResult) -> str:
     return "\n".join(lines)
 
 
-def format_cathay_europe_report(results: list[AwardResult], routes_checked: int, cabin_label: str = "Business") -> str:
-    """Format a full Cathay Europe search report."""
+def format_cathay_europe_report(results: list[AwardResult], routes_checked: int, cabin_label: str = "Business", source_label: str = "CX Europe") -> str:
+    """Format a search report."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    cabin_key = {"premium econ": "premium", "business": "business", "economy": "economy", "first": "first"}.get(cabin_label.lower(), cabin_label.lower())
-    miles = MILES_REQUIRED.get(cabin_key, 0)
-    miles_str = f" | {miles:,} miles/seat" if miles else ""
-    header = f"CX Europe {cabin_label}{miles_str}\n{now} | {routes_checked} routes\n{'=' * 30}\n"
+    header = f"{source_label} {cabin_label}\n{now} | {routes_checked} routes\n{'=' * 30}\n"
 
     if not results:
         return header + f"\nNo {cabin_label.lower()} availability found."
@@ -198,11 +195,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if search_all:
             await update.message.reply_text(f"Searching ALL sources {cabin_label}... (~15 seconds)")
         else:
-            await update.message.reply_text(f"Searching CX Europe {cabin_label}... (~5 seconds)")
+            await update.message.reply_text(f"Searching CX {cabin_label}... (~5 seconds)")
 
         if _search_callback:
             results, routes_checked = await _search_callback(cabin=cabin, search_all=search_all)
-            report = format_cathay_europe_report(results, routes_checked, cabin_label)
+            source_label = "All Programs" if search_all else "CX Europe"
+            report = format_cathay_europe_report(results, routes_checked, cabin_label, source_label)
             await update.message.reply_text(report)
         else:
             await update.message.reply_text("Search not available (monitor not running).")

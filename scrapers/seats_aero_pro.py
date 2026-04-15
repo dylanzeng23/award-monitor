@@ -15,7 +15,7 @@ API_URL = "https://seats.aero/partnerapi/search"
 API_KEY = ""  # Set from config
 
 # Only alert on programs user has points in
-PROGRAMS_OF_INTEREST = {"american", "delta", "alaska", "avios", "finnair", "aeromexico", "united"}
+PROGRAMS_OF_INTEREST = {"american", "delta", "alaska", "avios", "finnair", "aeromexico", "united", "aeroplan", "virginatlantic"}
 
 # Exclude operators (bad connections)
 EXCLUDE_OPERATORS = {"VN", "EY", "EK", "QR", "TK"}

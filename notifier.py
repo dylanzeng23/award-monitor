@@ -172,10 +172,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle free-text messages like 'cathay europe biz'."""
     text = (update.message.text or "").strip().lower()
 
-    # Parse cabin from message
+    # Parse command: "europe biz" = all sources, "cx europe biz" = CX only
     cabin = None
-    if text in ("cathay europe", "cathay eu", "cathay europe biz", "cathay eu biz",
-                 "cx europe", "cx eu", "cx europe biz", "cx eu biz", "search", "搜"):
+    search_all = False
+
+    if text in ("europe biz", "europe", "search all", "all biz", "搜全部"):
+        cabin = "business"
+        search_all = True
+    elif text in ("europe econ", "all econ"):
+        cabin = "economy"
+        search_all = True
+    elif text in ("cathay europe", "cathay eu", "cathay europe biz", "cathay eu biz",
+                   "cx europe", "cx eu", "cx europe biz", "cx eu biz", "search", "搜"):
         cabin = "business"
     elif text in ("cathay europe econ", "cathay eu econ", "cx europe econ", "cx eu econ", "搜经济"):
         cabin = "economy"
@@ -187,10 +195,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if cabin:
         cabin_label = {"business": "Business", "economy": "Economy", "premium": "Premium Econ", "first": "First"}[cabin]
-        await update.message.reply_text(f"Searching CX Europe {cabin_label}... (~5 seconds)")
+        if search_all:
+            await update.message.reply_text(f"Searching ALL sources {cabin_label}... (~15 seconds)")
+        else:
+            await update.message.reply_text(f"Searching CX Europe {cabin_label}... (~5 seconds)")
 
         if _search_callback:
-            results, routes_checked = await _search_callback(cabin=cabin)
+            results, routes_checked = await _search_callback(cabin=cabin, search_all=search_all)
             report = format_cathay_europe_report(results, routes_checked, cabin_label)
             await update.message.reply_text(report)
         else:
@@ -199,12 +210,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text in ("help", "帮助", "/help"):
         await update.message.reply_text(
             "Commands:\n"
-            "  cx europe biz - Business class\n"
-            "  cx europe econ - Economy\n"
-            "  cx europe prem - Premium Economy\n"
-            "  /status - Last run info\n"
-            "  /routes - Show monitored routes\n"
-            "  /recent - Recent availability found"
+            "  europe biz - Search ALL (CX + DL/AA/AS + JAL)\n"
+            "  cx europe biz - CX only\n"
+            "  cx europe econ - CX Economy\n"
+            "  /status - Last run\n"
+            "  /routes - Show routes\n"
+            "  /recent - Recent finds"
         )
 
 

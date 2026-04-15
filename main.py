@@ -92,19 +92,21 @@ async def run_search_cycle(config: Config, dry_run: bool = False) -> list[AwardR
     return all_new_results
 
 
-async def run_immediate_search(config: Config, cabin: str = "business") -> tuple[list[AwardResult], int]:
-    """Run an immediate search for all Cathay routes (called from Telegram bot).
-    Returns (all_results, routes_checked) — includes all availability, not just new."""
+async def run_immediate_search(config: Config, cabin: str = "business", search_all: bool = False) -> tuple[list[AwardResult], int]:
+    """Run an immediate search (called from Telegram bot).
+    search_all=True searches CX + seats.aero Pro + Tokyo routes.
+    search_all=False searches CX only.
+    Returns (all_results, routes_checked)."""
     all_results = []
     routes_checked = 0
 
+    # CX direct search
     scraper = CathayScraper()
     try:
         await scraper.start()
         for route in config.routes:
             if "cathay" not in route.programs:
                 continue
-            # Override cabin for this search
             search_route = SearchRoute(
                 origin=route.origin,
                 destination=route.destination,
@@ -116,9 +118,32 @@ async def run_immediate_search(config: Config, cabin: str = "business") -> tuple
             all_results.extend(results)
             routes_checked += 1
     except Exception as e:
-        logger.error(f"Immediate search error: {e}")
+        logger.error(f"CX search error: {e}")
     finally:
         await scraper.stop()
+
+    # seats.aero Pro search (all programs)
+    if search_all and config.seats_aero_key:
+        sa_scraper = SeatsAeroProScraper(api_key=config.seats_aero_key)
+        try:
+            await sa_scraper.start()
+            for route in config.routes:
+                if "seats_aero_pro" not in route.programs:
+                    continue
+                search_route = SearchRoute(
+                    origin=route.origin,
+                    destination=route.destination,
+                    cabin=cabin,
+                    date_range=route.date_range,
+                    programs=route.programs,
+                )
+                results = await sa_scraper.search_route(search_route)
+                all_results.extend(results)
+                routes_checked += 1
+        except Exception as e:
+            logger.error(f"seats.aero search error: {e}")
+        finally:
+            await sa_scraper.stop()
 
     return all_results, routes_checked
 
@@ -129,8 +154,8 @@ async def scheduler_loop(config: Config):
     logger.info(f"Scheduler started. Interval: {config.interval_hours}h ({interval_seconds:.0f}s)")
 
     # Set up the search callback for "cathay europe" command
-    async def search_callback(cabin: str = "business"):
-        return await run_immediate_search(config, cabin=cabin)
+    async def search_callback(cabin: str = "business", search_all: bool = False):
+        return await run_immediate_search(config, cabin=cabin, search_all=search_all)
 
     set_search_callback(search_callback)
 
@@ -146,9 +171,8 @@ async def scheduler_loop(config: Config):
             config,
             "Award Monitor started.\n\n"
             "Commands:\n"
-            "  cathay europe biz - Business class\n"
-            "  cathay europe econ - Economy\n"
-            "  cathay europe - Business (default)\n"
+            "  europe biz - ALL sources (CX+DL/AA/AS+JAL)\n"
+            "  cx europe biz - CX only\n"
             "  /status - Last run\n"
             "  /routes - Show routes\n"
             "  /recent - Recent finds\n"

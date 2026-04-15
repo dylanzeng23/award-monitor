@@ -14,6 +14,7 @@ from models import AwardResult, Config, RunLog, SearchRoute
 from notifier import send_alerts, send_message, build_bot_app, set_search_callback, is_search_requested
 from scrapers.cathay import CathayScraper
 from scrapers.seats_aero import SeatsAeroScraper
+from scrapers.seats_aero_pro import SeatsAeroProScraper
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 SCRAPERS = {
     "cathay": CathayScraper,
     "seats_aero": SeatsAeroScraper,
+    "seats_aero_pro": None,  # Initialized with API key from config
 }
 
 
@@ -44,12 +46,16 @@ async def run_search_cycle(config: Config, dry_run: bool = False) -> list[AwardR
 
     for route in config.routes:
         for program in route.programs:
-            scraper_cls = SCRAPERS.get(program)
-            if not scraper_cls:
-                logger.warning(f"Unknown scraper: {program}")
-                continue
-
-            scraper = scraper_cls()
+            if program == "seats_aero_pro":
+                if not config.seats_aero_key:
+                    continue
+                scraper = SeatsAeroProScraper(api_key=config.seats_aero_key)
+            else:
+                scraper_cls = SCRAPERS.get(program)
+                if not scraper_cls:
+                    logger.warning(f"Unknown scraper: {program}")
+                    continue
+                scraper = scraper_cls()
             run_log = RunLog(scraper=program, started_at=datetime.now(UTC))
             log_id = db.save_run_log(run_log)
 

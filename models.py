@@ -48,6 +48,7 @@ class Config:
     bot_token: str
     chat_id: str
     interval_hours: float = 8.0
+    seats_aero_key: str = ""
 
     @classmethod
     def from_yaml(cls, data: dict) -> "Config":
@@ -67,5 +68,6 @@ class Config:
             routes=routes,
             bot_token=tg.get("bot_token", ""),
             chat_id=tg.get("chat_id", ""),
+            seats_aero_key=data.get("seats_aero_key", ""),
             interval_hours=sched.get("interval_hours", 8.0),
         )

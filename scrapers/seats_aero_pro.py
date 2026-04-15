@@ -80,6 +80,10 @@ class SeatsAeroProScraper:
         miles_key = CABIN_MAP.get(target, "J") + "MileageCost"
         seats_key = CABIN_MAP.get(target, "J") + "RemainingSeats"
 
+        cabin_prefix = CABIN_MAP.get(target, "J")
+        direct_key = f"{cabin_prefix}Direct"
+        direct_airlines_key = f"{cabin_prefix}DirectAirlines"
+
         for entry in data.get("data", []):
             if not entry.get(avail_key):
                 continue
@@ -91,6 +95,17 @@ class SeatsAeroProScraper:
             if miles == 0 or miles > 100000:
                 continue
             if source not in PROGRAMS_OF_INTEREST:
+                continue
+
+            # Prefer direct flights; for connections, check airlines aren't excluded
+            is_direct = entry.get(direct_key, False)
+            direct_airlines = entry.get(direct_airlines_key, "") or ""
+            if not is_direct and direct_airlines:
+                # Has airline info — check against exclude list
+                if any(op in direct_airlines.upper() for op in EXCLUDE_OPERATORS):
+                    continue
+            # If not direct and no airline info, it's likely VN/EK connection — skip
+            if not is_direct and not direct_airlines:
                 continue
 
             flight_date = date.fromisoformat(entry["Date"])

@@ -1,0 +1,21 @@
+[Unit]
+Description=Award Flight Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dylanz
+WorkingDirectory=/home/dylanz/award-monitor
+ExecStart=/home/dylanz/award-monitor/venv/bin/python main.py --config config.local.yaml
+Restart=always
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/dylanz/award-monitor
+
+[Install]
+WantedBy=multi-user.target

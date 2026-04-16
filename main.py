@@ -11,7 +11,7 @@ import yaml
 
 import db
 from models import AwardResult, Config, RunLog, SearchRoute
-from notifier import send_alerts, send_message, build_bot_app, set_search_callback, is_search_requested
+from notifier import send_alerts, send_message, build_bot_app, set_search_callback, set_config_path, is_search_requested
 from scrapers.cathay import CathayScraper
 from scrapers.seats_aero import SeatsAeroScraper
 from scrapers.seats_aero_pro import SeatsAeroProScraper
@@ -173,9 +173,12 @@ async def scheduler_loop(config: Config):
             "Commands:\n"
             "  europe biz - ALL sources (CX+DL/AA/AS+JAL)\n"
             "  cx europe biz - CX only\n"
+            "  /check - Search all sources\n"
             "  /status - Last run\n"
             "  /routes - Show routes\n"
             "  /recent - Recent finds\n"
+            "  /add CDG - Add route\n"
+            "  /remove CDG - Remove route\n"
             f"\nMonitoring {len(config.routes)} routes every {config.interval_hours}h"
         )
 
@@ -211,6 +214,7 @@ async def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
+    set_config_path(Path(__file__).parent / args.config)
     db.init_db()
 
     logger.info(f"Loaded {len(config.routes)} routes")

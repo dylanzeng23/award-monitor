@@ -49,6 +49,8 @@ class Config:
     chat_id: str
     interval_hours: float = 8.0
     seats_aero_key: str = ""
+    wechat_token: str = ""
+    wechat_user_id: str = ""
 
     @classmethod
     def from_yaml(cls, data: dict) -> "Config":
@@ -64,10 +66,13 @@ class Config:
             ))
         tg = data.get("telegram", {})
         sched = data.get("schedule", {})
+        wx = data.get("wechat", {})
         return cls(
             routes=routes,
             bot_token=tg.get("bot_token", ""),
             chat_id=tg.get("chat_id", ""),
             seats_aero_key=data.get("seats_aero_key", ""),
             interval_hours=sched.get("interval_hours", 8.0),
+            wechat_token=wx.get("token", ""),
+            wechat_user_id=wx.get("user_id", ""),
         )

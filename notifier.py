@@ -8,6 +8,7 @@ from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 from models import AwardResult, Config, SearchRoute
+from wechat import send_wechat_message
 import db
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,11 @@ async def send_alerts(config: Config, new_results: list[AwardResult]):
             logger.info(f"Sent Telegram alert ({len(msg)} chars)")
         except Exception as e:
             logger.error(f"Failed to send Telegram alert: {e}")
+
+    # Also send to WeChat if configured
+    if config.wechat_token and config.wechat_user_id:
+        full_text = header + "\n".join(format_alert(r) + "\n" for r in new_results)
+        await send_wechat_message(config.wechat_token, config.wechat_user_id, full_text)
 
 
 async def send_message(config: Config, text: str):
